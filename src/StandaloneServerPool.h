@@ -30,6 +30,7 @@ private:
     void handleSentinels(Handler* h, ConnectConnection* s, Request* req, Response* res);
     void handleGetMaster(Handler* h, ConnectConnection* s, Request* req, Response* res);
     void handleSlaves(Handler* h, ConnectConnection* s, Request* req, Response* res);
+    void removeFailureServer() override;
     friend class ServerPoolTmpl<StandaloneServerPool>;
 private:
     ServerPoolRefreshMethod mRefreshMethod;

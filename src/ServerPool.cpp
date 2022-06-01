@@ -77,3 +77,31 @@ Server* ServerPool::iter(const std::vector<Server*>& servs, int& cursor)
     }
     return nullptr;
 }
+
+void ServerPool::freeFailureServers()
+{
+    static time_t last_show = time(NULL);
+    if (difftime(time(NULL), last_show) > 60) {
+        logWarn("invalid servers: %d", mInvalidServs.size());
+        last_show = time(NULL);
+    }
+
+    return; // don't free servers at present
+
+    int lastI = mInvalidServs.size() - 1;
+    for (int i=lastI; i>=0; --i) {
+        auto s = mInvalidServs[i];
+
+        if (difftime(time(NULL), s.time) > 300) {
+            logWarn("free %s server %s", s.s->isMaster()? "master" : "slave", s.s->addr().data());
+            delete s.s;
+            if (i < lastI) {
+                mInvalidServs[i] = mInvalidServs[lastI];
+            }
+            lastI--;
+        }
+    }
+    if (lastI < mInvalidServs.size()-1) {
+        mInvalidServs.resize(lastI+1);
+    }
+}

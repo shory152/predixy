@@ -92,6 +92,10 @@ void ClusterServerPool::handleResponse(Handler* h, ConnectConnection* s, Request
     p.set(res->body());
     for (auto serv : mServPool) {
         serv->setUpdating(true);
+        if (!serv->isStatic()) {
+            serv->setFail(true);
+            serv->setOnline(false);
+        }
     }
     while (true) {
         ClusterNodesParser::Status st = p.parse();
@@ -150,6 +154,8 @@ void ClusterServerPool::handleResponse(Handler* h, ConnectConnection* s, Request
             } else {
                 serv->setUpdating(false);
             }
+            serv->setFail(false);
+            serv->setOnline(true);
             serv->setRole(p.role());
             serv->setName(p.nodeId());
             serv->setMasterName(p.master());
@@ -232,3 +238,38 @@ void ClusterServerPool::handleResponse(Handler* h, ConnectConnection* s, Request
     }
 }
 
+void ClusterServerPool::removeFailureServer() 
+{
+    // delete expired invalid servers
+    freeFailureServers();
+
+    // move failure master/slave to mInvalidServs
+    int lastI = mServPool.size() - 1;
+    for (int i=lastI; i>=0; --i) {
+        auto s = mServPool[i];
+        if (s->isStatic() || !s->fail()) {
+            continue;
+        }
+        if (!s->isMaster() && !s->isSlave()) {
+            continue;
+        }
+
+        logWarn("remove %s server %s", s->isMaster()? "master" : "slave", s->addr().data());
+        s->setOnline(false);
+        mServs.erase(s->addr());
+
+        s->group()->remove(s);
+        s->setGroup(nullptr);
+
+        InvalidServer badsvr{time(NULL), s};
+        mInvalidServs.push_back(badsvr);
+
+        if (i < lastI) {
+            mServPool[i] = mServPool[lastI];
+        }
+        lastI--;
+    }
+    if (lastI < mServPool.size()-1) {
+        mServPool.resize(lastI+1);
+    }
+}

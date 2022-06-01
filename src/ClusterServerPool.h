@@ -38,6 +38,7 @@ private:
     {
         return ServerPool::iter(mServPool, cursor);
     }
+    void removeFailureServer() override;
     friend class ServerPoolTmpl<ClusterServerPool>;
 private:
     Hash mHash;

@@ -24,15 +24,11 @@ ServerGroup::~ServerGroup()
 Server* ServerGroup::getMaster() const
 {
     FuncCallTimer();
-    int cnt = mServs.size();
-    for (int i = 0; i < cnt; ++i) {
-        Server* s = mServs[i];
-        if (!s->online()) {
+    for (auto it = mServs.rbegin(); it != mServs.rend(); ++it) {
+        if (!(*it)->online() || (*it)->fail() || !(*it)->isMaster()) {
             continue;
         }
-        if (s->role() == Server::Master) {
-            return s;
-        }
+        return *it;
     }
     return nullptr;
 }
@@ -48,17 +44,7 @@ Server* ServerGroup::getServer(Handler* h, Request* req) const
     FuncCallTimer();
     Server* serv = nullptr;
     if (req->requireWrite()) {
-        int cnt = mServs.size();
-        for (int i = 0; i < cnt; ++i) {
-            Server* s = mServs[i];
-            if (!s->online()) {
-                continue;
-            }
-            if (s->role() == Server::Master) {
-                serv = s;
-                break;
-            }
-        }
+        serv = getMaster();
     } else if (auto dataCenter = mPool->proxy()->dataCenter()) {
         serv = getReadServer(h, dataCenter->localDC());
     } else {

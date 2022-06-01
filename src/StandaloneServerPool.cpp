@@ -406,6 +406,24 @@ void StandaloneServerPool::handleGetMaster(Handler* h, ConnectConnection* s, Req
             serv->setGroup(g);
         }
     } else {
+        // clear all master and slave before add new master
+        logWarn("add new master %s, offline all old master and slave", addr.data());
+        for (auto s : mServPool) {
+            if (s->group() != g) {
+                continue;
+            }
+            if (s->isStatic()) {
+                continue;
+            }
+            if (!s->isMaster() && !s->isSlave()) {
+                continue;
+            }
+
+            logWarn("offline %s server %s", s->isMaster()? "master" : "slave", s->addr().data());
+            s->setOnline(false);
+            s->setFail(true);
+        }
+
         if (mServPool.size() == mServPool.capacity()) {
             logWarn("too many servers %d, will ignore new master server %s",
                      (int)mServPool.size(), addr.data());
@@ -478,5 +496,41 @@ void StandaloneServerPool::handleSlaves(Handler* h, ConnectConnection* s, Reques
                     g->name().data());
             break;
         }
+    }
+}
+
+void StandaloneServerPool::removeFailureServer()
+{
+    // delete expired invalid servers
+    freeFailureServers();
+
+    // move failure master/slave to mInvalidServs
+    int lastI = mServPool.size() - 1;
+    for (int i=lastI; i>=0; --i) {
+        auto s = mServPool[i];
+        if (s->isStatic() || !s->fail()) {
+            continue;
+        }
+        if (!s->isMaster() && !s->isSlave()) {
+            continue;
+        }
+
+        logWarn("remove %s server %s", s->isMaster()? "master" : "slave", s->addr().data());
+        s->setOnline(false);
+        mServs.erase(s->addr());
+
+        s->group()->remove(s);
+        s->setGroup(nullptr);
+
+        InvalidServer badsvr{time(NULL), s};
+        mInvalidServs.push_back(badsvr);
+
+        if (i < lastI) {
+            mServPool[i] = mServPool[lastI];
+        }
+        lastI--;
+    }
+    if (lastI < mServPool.size()-1) {
+        mServPool.resize(lastI+1);
     }
 }

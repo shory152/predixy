@@ -97,6 +97,7 @@ public:
     void refreshRequest(Handler* h)
     {
         mRefreshRequestFunc(this, h);
+        removeFailureServer();
     }
     void handleResponse(Handler* h, ConnectConnection* s, Request* req, Response* res);
 protected:
@@ -125,6 +126,13 @@ protected:
     static Server* randServer(Handler* h, const std::vector<Server*>& servs);
     static Server* iter(const std::vector<Server*>& servs, int& cursor);
 protected:
+    void freeFailureServers();
+    virtual void removeFailureServer() = 0;
+    struct InvalidServer {
+        time_t time;
+        Server *s;
+    };
+    std::vector<InvalidServer> mInvalidServs;
     std::map<String, Server*> mServs;
     std::vector<ServerGroup*> mGroupPool;
 private:
