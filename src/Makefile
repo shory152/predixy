@@ -51,6 +51,10 @@ CFLAGS = -std=c++11 -Wall -w $(Opts)
 INCFLAGS =
 LDFLAGS += $(LDLIBCPP) -rdynamic -lpthread
 
+version = $(shell git describe --long)
+ifneq ($(version), "")
+	CFLAGS += -D _PREDIXY_VERSION_=\"$(version)\"
+endif
 
 target = predixy
 objs = \
