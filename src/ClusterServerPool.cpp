@@ -242,6 +242,12 @@ void ClusterServerPool::handleResponse(Handler* h, ConnectConnection* s, Request
 
 void ClusterServerPool::removeFailureServer() 
 {
+    static time_t lastRemove = time(NULL);
+    if (difftime(time(NULL), lastRemove) < 10) {
+        return;
+    }
+    lastRemove = time(NULL);
+
     // delete expired invalid servers
     freeFailureServers();
 
