@@ -152,6 +152,8 @@ void ClusterServerPool::handleResponse(Handler* h, ConnectConnection* s, Request
                             p.master().data(),
                             serv->dcName().data());
             } else {
+                serv->setFail(false);
+                serv->setOnline(true);
                 serv->setUpdating(false);
             }
             serv->setFail(false);
@@ -247,10 +249,23 @@ void ClusterServerPool::removeFailureServer()
     int lastI = mServPool.size() - 1;
     for (int i=lastI; i>=0; --i) {
         auto s = mServPool[i];
-        if (s->isStatic() || !s->fail()) {
+        if (s->isStatic())
+        {
             continue;
         }
-        if (!s->isMaster() && !s->isSlave()) {
+        if (s->updating())
+        {
+            continue;
+        }
+        if (!s->isMaster() && !s->isSlave())
+        {
+            continue;
+        }
+        if (!s->fail())
+        {
+            continue;
+        }
+        if (difftime(time(NULL), s->getFailTime()) < 180) {
             continue;
         }
 
