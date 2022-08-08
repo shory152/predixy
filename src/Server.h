@@ -107,6 +107,14 @@ public:
     void setFail(bool v)
     {
         mFail = v;
+        if (mFail) {
+            failAt = time(NULL);
+        } else {
+            failAt = 0;
+        }
+    }
+    time_t getFailTime() {
+        return failAt;
     }
     bool online() const
     {
@@ -139,6 +147,7 @@ private:
     bool mFail;
     bool mOnline;
     bool mUpdating;
+    time_t failAt;
 };
 
 #endif
